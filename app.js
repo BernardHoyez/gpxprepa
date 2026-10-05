@@ -27,13 +27,13 @@ function parseGpx(x,name){
 function parseKml(x,name){
   const d=new DOMParser().parseFromString(x,'application/xml'); if(d.querySelector('parsererror'))throw Error('KML XML invalide');
   let line=[];
-  [...d.querySelectorAll('LineString coordinates')].some(n=>{const p=parseCoords(n.textContent);if(p.length>1){line=p;return true}return false});
-  if(!line.length)[...d.querySelectorAll('gx\\:Track,Track')].some(n=>{const wh=[...n.querySelectorAll('when')].map(q=>q.textContent);const cs=[...n.querySelectorAll('gx\\:coord,coord')];const p=cs.map(q=>{let a=q.textContent.trim().split(/\\s+/).map(Number);return {lon:a[0],lat:a[1],ele:a[2]??NaN}});if(p.length>1){line=p;return true}return false});
+  [...d.querySelectorAll('LineString > coordinates, LineString coordinates')].some(n=>{const p=parseCoords(n.textContent);if(p.length>1){line=p;return true}return false});
+  if(!line.length)[...d.querySelectorAll('gx\\:Track,Track')].some(n=>{const wh=[...n.querySelectorAll('when')].map(q=>q.textContent);const cs=[...n.querySelectorAll('gx\\:coord,coord')];const p=cs.map(q=>{let a=q.textContent.trim().split(/\s+/).map(Number);return {lon:a[0],lat:a[1],ele:a[2]??NaN}});if(p.length>1){line=p;return true}return false});
   if(line.length<2)throw Error('Aucune LineString/Track exploitable dans le KML');
   const w=[...d.querySelectorAll('Placemark')].map(pm=>{let c=pm.querySelector('Point coordinates');if(!c)return null;let p=parseCoords(c.textContent)[0];if(!p)return null;return {...p,name:pm.querySelector('name')?.textContent?.trim()||''}}).filter(Boolean);
   return buildData(name,line,w);
 }
-function parseCoords(s){return s.trim().split(/\\s+/).map(t=>{let a=t.split(',').map(Number);return {lon:a[0],lat:a[1],ele:a[2]??NaN}}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon))}
+function parseCoords(s){return s.trim().split(/\s+/).map(t=>{let a=t.split(',').map(Number);return {lon:a[0],lat:a[1],ele:a[2]??NaN}}).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon))}
 function buildData(name,pts,wpts){
   let dist=0,up=0,down=0,max=-Infinity,min=Infinity,hasEle=pts.some(p=>Number.isFinite(p.ele));
   for(let i=1;i<pts.length;i++){let dh=Number.isFinite(pts[i].ele)&&Number.isFinite(pts[i-1].ele)?pts[i].ele-pts[i-1].ele:NaN;let ds=hav(pts[i-1],pts[i]);dist+=ds;if(Number.isFinite(dh)){if(dh>0)up+=dh;else down-=dh;max=Math.max(max,pts[i].ele);min=Math.min(min,pts[i].ele)}}
